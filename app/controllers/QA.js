@@ -1,9 +1,8 @@
 const QA = require('../models/QA');
-const { body, validationResult } = require('express-validator');
+const {  validateRegister, validateLogin } = require('../middleware/Input-validation')
 const bcrypt = require('bcryptjs');
 exports.Register = async (req, res) =>
 {
-
     const QA_MODEL = {
         name: req.body.name,
         email: req.body.email,
@@ -12,7 +11,13 @@ exports.Register = async (req, res) =>
     
     try
     {
-        const user = await QA.findOne({ where: { email: req.body.email } });
+        const { error, value } = validateRegister(QA_MODEL);
+
+        if (error)
+        {
+            return res.status(400).json({ message: error.details});
+        }
+        const user = await QA.findOne({ where: { email: value.email } });
         if (user)
         {
             return res.status(422).json({message: "QA already exists"});
@@ -42,12 +47,17 @@ exports.Login = async (req, res) =>
             email: req.body.email,
             password: req.body.password
         }
-        const user = await QA.findOne({ where: { email: QA_MODEL.email } });
+        const { error, value } = validateLogin(QA_MODEL);
+        if (error)
+        {
+            return res.status(400).json({ message: error.details});
+        }
+        const user = await QA.findOne({ where: { email: value.email } });
         if (!user)
         {
            return res.status(401).json({ message: "QA does not exist" });
         }
-        const isEqual = await bcrypt.compare(QA_MODEL.password, user.password);
+        const isEqual = await bcrypt.compare(value.password, user.password);
         if (!isEqual)
         {
             return res.status(401).json({message: "Password is incorrect"});
