@@ -1,5 +1,5 @@
 const QA = require('../models/QA');
-const {  validateRegister, validateLogin } = require('../middleware/Input-validation')
+const {  validateRegister, validateLogin, validateResetPassword, validateUpdatePassword } = require('../middleware/Input-validation')
 const bcrypt = require('bcryptjs');
 exports.Register = async (req, res) =>
 {
@@ -77,13 +77,19 @@ exports.Login = async (req, res) =>
 
 exports.ResetPassword = async (req, res) =>
 {
-    try {
-        const user = await QA.findOne({ where: { email: req.body.email } });
+    try
+    {
+        const { error, value } = validateResetPassword(req.body);
+        if (error)
+        {
+            return res.status(400).json({ message: error.details});
+        }
+        const user = await QA.findOne({ where: { email: value.email } });
         if (!user)
         {
             return res.status(401).json({message: "There is no QA with this email"});
         }
-        const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        // const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
         // const msg = {
         //     to: user.email,
         //     from: '',
@@ -94,24 +100,35 @@ exports.ResetPassword = async (req, res) =>
         // sgMail.send(msg);
         return res.status(200).json({ message: "Reset password link sent to your email" });
 
-    } catch (error) {
+    } catch (error)
+    {
+        console.log(error);
         return res.status(500).json({ message: "You are not Authorized" });
     }
 }
 exports.UpdatePassword = async (req, res) =>
 {
-    const user = await QA.findOne({ where: { email: req.body.email } });
-    if (!user)
+
+    try
     {
-        return res.status(401).json({message: "There is no QA with this email"});
+        const { error, value } = validateUpdatePassword(req.body);
+        if (error)
+        {
+            return res.status(400).json({ message: error.details});
+        }
+        const user = await QA.findOne({ where: { email: value.email } });
+        if (!user)
+        {
+            return res.status(401).json({message: "There is no QA with this email"});
+        }
+        const hashedPassword = await bcrypt.hash(req.body.newPassword, 12);
+        user.password = hashedPassword;
+        await user.save();
+        return res.status(200).json({ message: "Password changed successfully" });
     }
-    const isEqual = await bcrypt.compare(req.body.oldPassword, user.password);
-    if (!isEqual)
+    catch (err)
     {
-        throw new Error("Old password is incorrect");
+        return res.status(500).json({ message: "You are not Authorized" });
     }
-    const hashedPassword = await bcrypt.hash(req.body.newPassword, 12);
-    user.password = hashedPassword;
-    await user.save();
-    return res.status(200).json({ message: "Password changed successfully" });
+   
 }

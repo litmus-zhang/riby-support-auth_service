@@ -14,7 +14,7 @@ app.use((req, res, next) =>
     next();
 })
 
-app.use('/api', require('./routes/QA'));
+app.use('/api/v1/qa', require('./routes/QA'));
 
 const start = async () =>
 {
