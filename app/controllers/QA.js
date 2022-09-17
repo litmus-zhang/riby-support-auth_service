@@ -1,6 +1,8 @@
 const QA = require('../models/QA');
 const {  validateRegister, validateLogin, validateResetPassword, validateUpdatePassword } = require('../middleware/Input-validation')
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const request = require('../config/mail');
 exports.Register = async (req, res) =>
 {
     const QA_MODEL = {
@@ -39,7 +41,7 @@ exports.Register = async (req, res) =>
         return res.status(500).json({ message: "You are not Authorized" });
     }
 }
- 
+
 exports.Login = async (req, res) =>
 {
     try {
@@ -64,10 +66,10 @@ exports.Login = async (req, res) =>
         }
         //Generate token
         // const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET);
+        return res.status(200).json({ token: token, userId: user.id, message: "QA logged in successfully" });
 
         // return res.status(200).json(user);
-        return res.status(200).json({ message: "QA logged in successfully" });
-         
     } catch (error)
     {
         
@@ -89,15 +91,11 @@ exports.ResetPassword = async (req, res) =>
         {
             return res.status(401).json({message: "There is no QA with this email"});
         }
-        // const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        // const msg = {
-        //     to: user.email,
-        //     from: '',
-        //     subject: 'Reset Password',
-        //     text: 'Reset Password',
-        //     html: ``,
-        // };
-        // sgMail.send(msg);
+        const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const useremail = user.email;
+        const username = user.name;
+        await request(useremail, username);
+
         return res.status(200).json({ message: "Reset password link sent to your email" });
 
     } catch (error)
